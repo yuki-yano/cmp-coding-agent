@@ -231,4 +231,70 @@ T['source modules']['at source can enable deep search from setup config'] = func
   eq(file.filterText, '@src/nested/api.lua')
 end
 
+T['source modules']['uses cwd project roots for temp editprompt buffers'] = function()
+  local project = helpers.new_temp_dir('cwd-project')
+  local home = helpers.new_temp_dir('cwd-home')
+  local scratch = helpers.new_temp_dir('cwd-scratch')
+  table.insert(temp_dirs, project)
+  table.insert(temp_dirs, home)
+  table.insert(temp_dirs, scratch)
+
+  vim.fn.mkdir(helpers.join(project, '.git'), 'p')
+  helpers.write_file(
+    helpers.join(project, '.claude/skills/review-pr/SKILL.md'),
+    table.concat({
+      '---',
+      'description: Review the current changes',
+      '---',
+      '',
+      'Review the current changes.',
+    }, '\n')
+  )
+  helpers.write_file(helpers.join(project, 'src/app.lua'), 'return true\n')
+  helpers.write_file(helpers.join(scratch, 'prompt.md'), 'temporary prompt\n')
+
+  child.lua(
+    [[
+    local project, home, scratch = ...
+    vim.env.HOME = home
+    vim.cmd('cd ' .. vim.fn.fnameescape(project))
+    vim.cmd('edit ' .. vim.fn.fnameescape(scratch .. '/prompt.md'))
+    require('cmp_coding_agent').setup({
+      agent = 'both',
+      paths = {
+        preserve_at_prefix = false,
+      },
+    })
+
+    require('cmp_coding_agent.source.slash').new():complete({
+      context = {
+        bufnr = 0,
+        cursor_before_line = '/re',
+      },
+    }, function(response)
+      _G.cmp_coding_agent_test_cwd_slash_items = response.items
+    end)
+
+    require('cmp_coding_agent.source.at').new():complete({
+      context = {
+        bufnr = 0,
+        cursor_before_line = '@src/a',
+      },
+    }, function(response)
+      _G.cmp_coding_agent_test_cwd_at_items = response.items
+    end)
+  ]],
+    { project, home, scratch }
+  )
+
+  local slash_items = child.lua_get('_G.cmp_coding_agent_test_cwd_slash_items')
+  local at_items = child.lua_get('_G.cmp_coding_agent_test_cwd_at_items')
+
+  local review_pr = helpers.find_item(slash_items, 'review-pr')
+  eq(review_pr.menu, '[Claude]')
+
+  local file = helpers.find_item(at_items, 'src/app.lua')
+  eq(file.insertText, 'src/app.lua')
+end
+
 return T

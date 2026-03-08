@@ -145,27 +145,21 @@ function M.resolve_buffer_dir(bufnr)
 end
 
 function M.resolve_project_root(bufnr)
-  local start = M.resolve_buffer_dir(bufnr) or M.normalize(uv.cwd())
-  if not start then
-    return nil
-  end
-
-  local git_marker = vim.fs.find('.git', {
-    path = start,
-    upward = true,
-    limit = 1,
-  })[1]
-
-  if git_marker then
-    return vim.fs.dirname(git_marker)
-  end
-
   local cwd = M.normalize(uv.cwd())
-  if cwd and (start == cwd or vim.startswith(start, cwd .. '/')) then
+  if cwd then
+    local git_marker = vim.fs.find('.git', {
+      path = cwd,
+      upward = true,
+      limit = 1,
+    })[1]
+
+    if git_marker then
+      return vim.fs.dirname(git_marker)
+    end
     return cwd
   end
 
-  return start
+  return M.resolve_buffer_dir(bufnr)
 end
 
 function M.ancestors(start, stop)

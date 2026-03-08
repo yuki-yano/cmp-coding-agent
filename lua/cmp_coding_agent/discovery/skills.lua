@@ -26,9 +26,19 @@ local function collect_roots(opts)
   local project_root = util.normalize(opts.project_root)
   local buffer_dir = util.normalize(opts.buffer_dir) or project_root
   local home_dir = util.normalize(opts.home_dir)
+  local repo_buffer_dir = buffer_dir
+
+  if
+    project_root
+    and repo_buffer_dir
+    and repo_buffer_dir ~= project_root
+    and not vim.startswith(repo_buffer_dir, project_root .. '/')
+  then
+    repo_buffer_dir = project_root
+  end
 
   if project_root and include.repo_agents ~= false then
-    for _, ancestor in ipairs(util.ancestors(buffer_dir or project_root, project_root)) do
+    for _, ancestor in ipairs(util.ancestors(repo_buffer_dir or project_root, project_root)) do
       add_root(roots, seen, util.join(ancestor, '.agents/skills'), 'codex', 'dollar', 'repo')
     end
   end

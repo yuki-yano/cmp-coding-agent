@@ -40,7 +40,7 @@ local function resolve_search_state(opts)
   local root = choose_root(opts)
   local base_root = root
 
-  if vim.startswith(raw, './') or vim.startswith(raw, '../') then
+  if opts.root == 'buffer' and (vim.startswith(raw, './') or vim.startswith(raw, '../')) then
     base_root = util.normalize(opts.buffer_dir) or root
   end
 

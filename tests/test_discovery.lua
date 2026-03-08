@@ -105,6 +105,44 @@ T['skills.collect()']['collects repo and user skills with precedence'] = functio
   eq(deploy.trigger_family, 'dollar')
 end
 
+T['skills.collect()']['uses project_root when buffer_dir is outside the repo'] = function()
+  local project = helpers.new_temp_dir('project-outside-buffer')
+  local home = helpers.new_temp_dir('home-outside-buffer')
+  local scratch = helpers.new_temp_dir('scratch-outside-buffer')
+  table.insert(temp_dirs, project)
+  table.insert(temp_dirs, home)
+  table.insert(temp_dirs, scratch)
+
+  helpers.write_file(
+    helpers.join(project, '.agents/skills/review-pr/SKILL.md'),
+    table.concat({
+      '---',
+      'description: Project review skill',
+      '---',
+      '',
+      'Review the project diff.',
+    }, '\n')
+  )
+
+  local items = require('cmp_coding_agent.discovery.skills').collect({
+    project_root = project,
+    buffer_dir = scratch,
+    home_dir = home,
+    include_non_user_invocable = false,
+    include = {
+      repo_agents = true,
+      repo_claude = true,
+      repo_codex = true,
+      user_agents = true,
+      user_claude = true,
+      user_codex = true,
+    },
+  })
+
+  local review = helpers.find_item(items, 'review-pr')
+  eq(review.root_scope, 'repo')
+end
+
 T['commands.collect()'] = new_set()
 
 T['commands.collect()']['collects claude commands and top-level codex prompts'] = function()
