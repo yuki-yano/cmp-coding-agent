@@ -38,10 +38,12 @@ T['paths.complete()']['builds relative path items and previews files'] = functio
 
   local main = helpers.find_item(items, 'src/main.lua')
   eq(main.insertText, 'src/main.lua')
+  eq(main.filterText, '@src/main.lua')
   helpers.expect.match(main.documentation.value, "print%('hello'%)")
 
   local module_dir = helpers.find_item(items, 'src/module/')
   eq(module_dir.insertText, 'src/module/')
+  eq(module_dir.filterText, '@src/module/')
 end
 
 T['paths.complete()']['respects preserve_at_prefix and hidden file setting'] = function()
@@ -77,6 +79,7 @@ T['paths.complete()']['respects preserve_at_prefix and hidden file setting'] = f
 
   local env_file = helpers.find_item(items, '.env')
   eq(env_file.insertText, '@.env')
+  eq(env_file.filterText, '@.env')
 end
 
 T['paths.complete()']['supports optional deep search for nested paths'] = function()

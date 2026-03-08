@@ -92,7 +92,7 @@ function M.from_record(record)
     detail = detail_for(record),
     documentation = documentation_for(record),
     kind = kind_for(record),
-    menu = record.agent and ('[' .. record.agent .. ']') or nil,
+    menu = record.menu and ('[' .. record.menu .. ']') or (record.agent and ('[' .. record.agent .. ']') or nil),
     sortText = string.format(
       '%03d:%03d:%s',
       record.sort_group or 50,

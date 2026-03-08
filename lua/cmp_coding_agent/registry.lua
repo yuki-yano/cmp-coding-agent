@@ -72,14 +72,125 @@ local function collect_command_records(ctx)
   })
 end
 
+local function record_key(record)
+  return table.concat({
+    record.label or '',
+    record.source_kind or '',
+    record.trigger_family or '',
+  }, '|')
+end
+
+local function agent_label(agent)
+  if agent == 'claude' then
+    return 'Claude'
+  end
+  if agent == 'codex' then
+    return 'Codex'
+  end
+  return agent
+end
+
+local function merged_documentation(records)
+  local sections = {}
+  local seen = {}
+
+  for _, record in ipairs(records) do
+    local chunks = {}
+
+    if record.description and record.description ~= '' then
+      table.insert(chunks, record.description)
+    end
+    if record['argument-hint'] and record['argument-hint'] ~= '' then
+      table.insert(chunks, '`' .. record['argument-hint'] .. '`')
+    end
+    if record.excerpt and record.excerpt ~= '' and record.excerpt ~= record.description then
+      table.insert(chunks, record.excerpt)
+    end
+    if record.path and record.path ~= '' then
+      table.insert(chunks, '`' .. record.path .. '`')
+    end
+
+    if #chunks > 0 then
+      local section = string.format('### %s\n\n%s', agent_label(record.agent), table.concat(chunks, '\n\n'))
+      if not seen[section] then
+        seen[section] = true
+        table.insert(sections, section)
+      end
+    end
+  end
+
+  if #sections == 0 then
+    return nil
+  end
+
+  return {
+    kind = 'markdown',
+    value = table.concat(sections, '\n\n'),
+  }
+end
+
+local function merge_records(records)
+  local grouped = {}
+  local order = {}
+
+  for _, record in ipairs(records) do
+    local key = record_key(record)
+    if not grouped[key] then
+      grouped[key] = {}
+      table.insert(order, key)
+    end
+    table.insert(grouped[key], record)
+  end
+
+  local merged = {}
+
+  for _, key in ipairs(order) do
+    local group = grouped[key]
+    if #group == 1 then
+      local record = group[1]
+      record.menu = record.agent and agent_label(record.agent) or nil
+      table.insert(merged, record)
+    else
+      local record = vim.deepcopy(group[1])
+      local has_claude = false
+      local has_codex = false
+
+      for _, entry in ipairs(group) do
+        has_claude = has_claude or entry.agent == 'claude'
+        has_codex = has_codex or entry.agent == 'codex'
+      end
+
+      if has_claude and has_codex then
+        record.menu = 'Agent'
+      elseif has_claude then
+        record.menu = 'Claude'
+      elseif has_codex then
+        record.menu = 'Codex'
+      end
+
+      record.documentation = merged_documentation(group) or record.documentation
+      if record.source_kind == 'skill' then
+        record.detail = '(skill)'
+      end
+
+      table.insert(merged, record)
+    end
+  end
+
+  return merged
+end
+
 local function to_completion_items(records, prefix, max_items)
+  records = merge_records(records)
   sort_records(records)
   local items = {}
 
   for index, record in ipairs(records) do
     record.insert_text = prefix .. record.label
+    record.filter_text = prefix .. record.label
     if record.source_kind == 'prompt' then
       record.insert_text = '/' .. record.label
+      record.filter_text = '/' .. record.label
     end
     record.sort_subgroup = record.sort_subgroup or index
     table.insert(items, item.from_record(record))

@@ -6,6 +6,16 @@ local eq = helpers.eq
 local child = helpers.new_child_neovim()
 local temp_dirs = {}
 
+local function count_items(items, label)
+  local count = 0
+  for _, item in ipairs(items) do
+    if item.label == label then
+      count = count + 1
+    end
+  end
+  return count
+end
+
 local T = new_set({
   hooks = {
     pre_case = function()
@@ -96,6 +106,16 @@ T['source modules']['slash source returns built-ins, skills, commands, and promp
   eq(labels['review-pr'], true)
   eq(labels['fix:tests'], true)
   eq(labels['prompts:release-notes'], true)
+
+  local review = helpers.find_item(items, 'review')
+  eq(review.menu, '[Agent]')
+  eq(count_items(items, 'compact'), 1)
+
+  local review_pr = helpers.find_item(items, 'review-pr')
+  eq(review_pr.menu, '[Claude]')
+
+  local prompt = helpers.find_item(items, 'prompts:release-notes')
+  eq(prompt.menu, '[Codex]')
 end
 
 T['source modules']['dollar and at sources respect agent and insert settings'] = function()
@@ -163,9 +183,12 @@ T['source modules']['dollar and at sources respect agent and insert settings'] =
 
   local skill = helpers.find_item(result.dollar_items, 'deploy-preview')
   eq(skill.insertText, '$deploy-preview')
+  eq(skill.filterText, '$deploy-preview')
+  eq(skill.menu, '[Codex]')
 
   local file = helpers.find_item(result.at_items, 'src/app.lua')
   eq(file.insertText, 'src/app.lua')
+  eq(file.filterText, '@src/app.lua')
 end
 
 T['source modules']['at source can enable deep search from setup config'] = function()
@@ -205,6 +228,7 @@ T['source modules']['at source can enable deep search from setup config'] = func
   local items = child.lua_get('_G.cmp_coding_agent_test_at_deep_items')
   local file = helpers.find_item(items, 'src/nested/api.lua')
   eq(file.insertText, 'src/nested/api.lua')
+  eq(file.filterText, '@src/nested/api.lua')
 end
 
 return T

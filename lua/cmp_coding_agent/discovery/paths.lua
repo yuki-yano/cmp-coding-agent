@@ -68,6 +68,7 @@ local function build_item(entry_path, is_dir, opts, label)
   return item.from_record({
     label = label,
     insert_text = insert,
+    filter_text = '@' .. label,
     agent = nil,
     source_kind = is_dir and 'directory' or 'file',
     documentation = preview_for(entry_path, opts.preview_lines),
