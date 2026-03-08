@@ -54,6 +54,7 @@ local function collect_roots(opts)
     add_root(roots, seen, util.join(home_dir, '.agents/skills'), 'codex', 'dollar', 'user')
   end
   if home_dir and include.user_claude ~= false then
+    add_root(roots, seen, util.join(home_dir, '.config/claude/skills'), 'claude', 'slash', 'user')
     add_root(roots, seen, util.join(home_dir, '.claude/skills'), 'claude', 'slash', 'user')
   end
   if home_dir and include.user_codex ~= false then

@@ -21,6 +21,7 @@ cmp-coding-agent provides three `nvim-cmp` sources for prompt authoring:
 Supported discovery targets:
 
 - Claude Code built-ins and `.claude/skills`
+- `~/.config/claude/skills`
 - Codex built-ins, `.agents/skills`, and `.codex/skills`
 - Claude commands from `.claude/commands`
 - Codex prompts from `$CODEX_HOME/prompts` or `~/.codex/prompts`

@@ -74,6 +74,16 @@ T['skills.collect()']['collects repo and user skills with precedence'] = functio
       'Deploy preview environments.',
     }, '\n')
   )
+  helpers.write_file(
+    helpers.join(home, '.config/claude/skills/agent-browser/SKILL.md'),
+    table.concat({
+      '---',
+      'description: Browser automation skill',
+      '---',
+      '',
+      'Automate browser actions.',
+    }, '\n')
+  )
 
   local items = require('cmp_coding_agent.discovery.skills').collect({
     project_root = project,
@@ -90,7 +100,7 @@ T['skills.collect()']['collects repo and user skills with precedence'] = functio
     },
   })
 
-  eq(helpers.labels(items), { 'deploy-preview', 'explain-code', 'local-only', 'review-pr' })
+  eq(helpers.labels(items), { 'agent-browser', 'deploy-preview', 'explain-code', 'local-only', 'review-pr' })
 
   local review = helpers.find_item(items, 'review-pr')
   eq(review.description, 'Project review skill')
@@ -103,6 +113,11 @@ T['skills.collect()']['collects repo and user skills with precedence'] = functio
   local deploy = helpers.find_item(items, 'deploy-preview')
   eq(deploy.agent, 'codex')
   eq(deploy.trigger_family, 'dollar')
+
+  local browser = helpers.find_item(items, 'agent-browser')
+  eq(browser.agent, 'claude')
+  eq(browser.trigger_family, 'slash')
+  eq(browser.root_scope, 'user')
 end
 
 T['skills.collect()']['uses project_root when buffer_dir is outside the repo'] = function()

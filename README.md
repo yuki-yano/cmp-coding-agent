@@ -15,6 +15,7 @@ It targets both Claude Code and Codex, and provides three sources:
   - `.agents/skills`
   - `.claude/skills`
   - `.codex/skills`
+  - `~/.config/claude/skills`
 - Claude custom command completion from `.claude/commands`
 - Codex prompt completion from `~/.codex/prompts` or `$CODEX_HOME/prompts`
 - `@` file path completion with configurable `@` preservation
@@ -125,6 +126,7 @@ cmp.setup({
   - project root `.claude/skills`
 - User roots
   - `~/.agents/skills`
+  - `~/.config/claude/skills`
   - `~/.claude/skills`
   - `~/.codex/skills`
 
