@@ -1,0 +1,135 @@
+*cmp-coding-agent.txt*       `nvim-cmp` sources for Claude Code and Codex
+
+==============================================================================
+CONTENTS                                                  *cmp-coding-agent*
+
+1. Introduction................|cmp-coding-agent-introduction|
+2. Setup.......................|cmp-coding-agent-setup|
+3. Configuration...............|cmp-coding-agent-configuration|
+4. Sources.....................|cmp-coding-agent-sources|
+5. License.....................|cmp-coding-agent-license|
+
+==============================================================================
+INTRODUCTION                               *cmp-coding-agent-introduction*
+
+cmp-coding-agent provides three `nvim-cmp` sources for prompt authoring:
+
+- `coding_agent_slash`
+- `coding_agent_dollar`
+- `coding_agent_at`
+
+Supported discovery targets:
+
+- Claude Code built-ins and `.claude/skills`
+- Codex built-ins, `.agents/skills`, and `.codex/skills`
+- Claude commands from `.claude/commands`
+- Codex prompts from `$CODEX_HOME/prompts` or `~/.codex/prompts`
+- `@` file path completion
+
+==============================================================================
+SETUP                                             *cmp-coding-agent-setup*
+
+>
+  require('cmp_coding_agent').setup({
+    agent = 'both',
+  })
+
+  local cmp = require('cmp')
+  cmp.setup({
+    sources = cmp.config.sources({
+      { name = 'coding_agent_slash' },
+      { name = 'coding_agent_dollar' },
+      { name = 'coding_agent_at' },
+    }),
+  })
+<
+
+==============================================================================
+CONFIGURATION                             *cmp-coding-agent-configuration*
+
+Default configuration:
+
+>
+  require('cmp_coding_agent').setup({
+    agent = 'both',
+    max_items = 200,
+    paths = {
+      preserve_at_prefix = true,
+      show_hidden = true,
+      preview_lines = 20,
+      deep_search = false,
+      root = 'git',
+    },
+    skills = {
+      include = {
+        repo_agents = true,
+        repo_claude = true,
+        repo_codex = true,
+        user_agents = true,
+        user_claude = true,
+        user_codex = true,
+      },
+      include_non_user_invocable = false,
+    },
+    commands = {
+      include_builtins = {
+        claude = true,
+        codex = true,
+      },
+      extra = {
+        claude = {},
+        codex = {},
+      },
+      disabled = {
+        claude = {},
+        codex = {},
+      },
+    },
+    prompts = {
+      codex = {
+        enabled = true,
+      },
+    },
+  })
+<
+
+`agent` can be one of:
+
+- `'claude'`
+- `'codex'`
+- `'both'`
+- `function(ctx) -> agent`
+
+Buffer-local override:
+
+>
+  vim.b.cmp_coding_agent_agent = 'claude'
+<
+
+==============================================================================
+SOURCES                                         *cmp-coding-agent-sources*
+
+`coding_agent_slash`
+
+- Claude built-ins
+- Codex built-ins
+- Claude skills
+- Claude commands
+- Codex prompts
+
+`coding_agent_dollar`
+
+- Codex skills
+
+`coding_agent_at`
+
+- relative file and directory completion
+- respects `paths.preserve_at_prefix`
+- `paths.deep_search = true` enables recursive search under the chosen root
+
+==============================================================================
+LICENSE                                         *cmp-coding-agent-license*
+
+MIT
+
+ vim:tw=78:ts=8:noet:ft=help:norl:
