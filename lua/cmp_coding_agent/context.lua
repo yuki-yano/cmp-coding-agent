@@ -6,7 +6,9 @@ local M = {}
 local valid_agents = {
   claude = true,
   codex = true,
+  copilot = true,
   both = true,
+  all = true,
 }
 
 function M.resolve_agent(opts)
@@ -35,7 +37,15 @@ function M.resolve_agent(opts)
 end
 
 function M.agent_enabled(mode, agent)
-  return mode == 'both' or mode == agent
+  if mode == 'all' then
+    return valid_agents[agent] == true
+  end
+
+  if mode == 'both' then
+    return agent == 'claude' or agent == 'codex'
+  end
+
+  return mode == agent
 end
 
 function M.build_discovery_context(bufnr)
@@ -49,6 +59,9 @@ function M.build_discovery_context(bufnr)
     env = {
       CLAUDE_CONFIG_DIR = util.normalize(vim.env.CLAUDE_CONFIG_DIR),
       CODEX_HOME = util.normalize(vim.env.CODEX_HOME),
+      COPILOT_CUSTOM_INSTRUCTIONS_DIRS = vim.env.COPILOT_CUSTOM_INSTRUCTIONS_DIRS,
+      COPILOT_HOME = util.normalize(vim.env.COPILOT_HOME),
+      COPILOT_SKILLS_DIRS = vim.env.COPILOT_SKILLS_DIRS,
     },
     agent = M.resolve_agent({ bufnr = bufnr }),
   }

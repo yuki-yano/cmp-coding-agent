@@ -224,6 +224,19 @@ function M.trim(value)
   return vim.trim(value or '')
 end
 
+function M.split_csv_paths(value)
+  local result = {}
+
+  for raw in (value or ''):gmatch('[^,]+') do
+    local path = M.normalize(vim.trim(raw))
+    if path then
+      table.insert(result, path)
+    end
+  end
+
+  return result
+end
+
 function M.starts_with_casefold(value, prefix)
   value = (value or ''):lower()
   prefix = (prefix or ''):lower()

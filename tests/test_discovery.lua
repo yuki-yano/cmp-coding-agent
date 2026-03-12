@@ -158,6 +158,156 @@ T['skills.collect()']['uses project_root when buffer_dir is outside the repo'] =
   eq(review.root_scope, 'repo')
 end
 
+T['skills.collect()']['collects copilot skills from repo, shared, user, and env roots'] = function()
+  local project = helpers.new_temp_dir('copilot-project')
+  local home = helpers.new_temp_dir('copilot-home')
+  local extra = helpers.new_temp_dir('copilot-extra')
+  table.insert(temp_dirs, project)
+  table.insert(temp_dirs, home)
+  table.insert(temp_dirs, extra)
+
+  helpers.write_file(
+    helpers.join(project, '.github/skills/root-skill/SKILL.md'),
+    table.concat({
+      '---',
+      'description: Project GitHub skill',
+      '---',
+      '',
+      'Available for Copilot slash completion.',
+    }, '\n')
+  )
+  helpers.write_file(
+    helpers.join(project, '.agents/skills/shared-skill/SKILL.md'),
+    table.concat({
+      '---',
+      'description: Shared repo skill',
+      '---',
+      '',
+      'Available for Codex and Copilot.',
+    }, '\n')
+  )
+  helpers.write_file(
+    helpers.join(project, '.claude/skills/claude-compatible/SKILL.md'),
+    table.concat({
+      '---',
+      'description: Claude compatible skill',
+      '---',
+      '',
+      'Shared with Copilot.',
+    }, '\n')
+  )
+  helpers.write_file(
+    helpers.join(project, 'apps/.github/skills/nested-skill/SKILL.md'),
+    table.concat({
+      '---',
+      'description: Nested GitHub skill',
+      '---',
+      '',
+      'Takes precedence from nested buffer directories.',
+    }, '\n')
+  )
+  helpers.write_file(
+    helpers.join(project, 'apps/.github/skills/shared-priority/SKILL.md'),
+    table.concat({
+      '---',
+      'description: Repo priority wins',
+      '---',
+      '',
+      'Repo version should win.',
+    }, '\n')
+  )
+  helpers.write_file(
+    helpers.join(home, '.copilot/skills/user-copilot/SKILL.md'),
+    table.concat({
+      '---',
+      'description: User Copilot skill',
+      '---',
+      '',
+      'Available from COPILOT_HOME.',
+    }, '\n')
+  )
+  helpers.write_file(
+    helpers.join(home, '.claude/skills/user-claude-compatible/SKILL.md'),
+    table.concat({
+      '---',
+      'description: User Claude compatible skill',
+      '---',
+      '',
+      'Shared with Copilot.',
+    }, '\n')
+  )
+  helpers.write_file(
+    helpers.join(home, '.copilot/skills/shared-priority/SKILL.md'),
+    table.concat({
+      '---',
+      'description: User priority loses',
+      '---',
+      '',
+      'User version should lose.',
+    }, '\n')
+  )
+  helpers.write_file(
+    helpers.join(extra, 'extra-skill/SKILL.md'),
+    table.concat({
+      '---',
+      'description: Extra env skill',
+      '---',
+      '',
+      'Loaded from COPILOT_SKILLS_DIRS.',
+    }, '\n')
+  )
+
+  local items = require('cmp_coding_agent.discovery.skills').collect({
+    project_root = project,
+    buffer_dir = helpers.join(project, 'apps/web'),
+    home_dir = home,
+    agent_mode = 'copilot',
+    env = {
+      COPILOT_HOME = helpers.join(home, '.copilot'),
+      COPILOT_SKILLS_DIRS = extra,
+    },
+    include_non_user_invocable = false,
+    include = {
+      repo_agents = true,
+      repo_claude = false,
+      repo_codex = false,
+      repo_copilot = true,
+      user_agents = false,
+      user_claude = false,
+      user_codex = false,
+      user_copilot = true,
+    },
+  })
+
+  eq(
+    helpers.labels(items),
+    {
+      'claude-compatible',
+      'extra-skill',
+      'nested-skill',
+      'root-skill',
+      'shared-priority',
+      'shared-skill',
+      'user-claude-compatible',
+      'user-copilot',
+    }
+  )
+
+  local nested = helpers.find_item(items, 'nested-skill')
+  eq(nested.agent, 'copilot')
+  eq(nested.trigger_family, 'slash')
+
+  local shared = helpers.find_item(items, 'shared-skill')
+  eq(shared.agent, 'copilot')
+  eq(shared.trigger_family, 'slash')
+
+  local priority = helpers.find_item(items, 'shared-priority')
+  eq(priority.description, 'Repo priority wins')
+
+  local extra_skill = helpers.find_item(items, 'extra-skill')
+  eq(extra_skill.root_scope, 'config')
+end
+
 T['commands.collect()'] = new_set()
 
 T['commands.collect()']['collects claude commands and top-level codex prompts'] = function()
@@ -224,6 +374,77 @@ T['commands.collect()']['collects claude commands and top-level codex prompts'] 
   local prompt = helpers.find_item(items, 'prompts:ship-it')
   eq(prompt.agent, 'codex')
   eq(prompt.source_kind, 'prompt')
+end
+
+T['commands.collect()']['collects copilot command records from claude command roots'] = function()
+  local project = helpers.new_temp_dir('copilot-commands-project')
+  local home = helpers.new_temp_dir('copilot-commands-home')
+  local config_dir = helpers.new_temp_dir('copilot-commands-config')
+  table.insert(temp_dirs, project)
+  table.insert(temp_dirs, home)
+  table.insert(temp_dirs, config_dir)
+
+  helpers.write_file(
+    helpers.join(project, '.claude/commands/research.md'),
+    table.concat({
+      '---',
+      'description: Research the current change',
+      'allowed-tools:',
+      '  - web_search',
+      'disable-model-invocation: true',
+      '---',
+      '',
+      'Gather external references.',
+    }, '\n')
+  )
+  helpers.write_file(
+    helpers.join(home, '.claude/commands/explain.md'),
+    table.concat({
+      '---',
+      'description: Explain current changes',
+      '---',
+      '',
+      'Explain the diff.',
+    }, '\n')
+  )
+  helpers.write_file(
+    helpers.join(config_dir, 'commands/admin.md'),
+    table.concat({
+      '---',
+      'description: Claude only config command',
+      '---',
+      '',
+      'Only for Claude.',
+    }, '\n')
+  )
+
+  local items = require('cmp_coding_agent.discovery.commands').collect({
+    project_root = project,
+    home_dir = home,
+    agent_mode = 'copilot',
+    env = {
+      CLAUDE_CONFIG_DIR = config_dir,
+    },
+  })
+
+  local explain_copilot
+  local research_copilot
+  local admin_copilot
+
+  for _, item in ipairs(items) do
+    if item.label == 'explain' and item.agent == 'copilot' then
+      explain_copilot = item
+    elseif item.label == 'research' and item.agent == 'copilot' then
+      research_copilot = item
+    elseif item.label == 'admin' and item.agent == 'copilot' then
+      admin_copilot = item
+    end
+  end
+
+  eq(explain_copilot.description, 'Explain current changes')
+  eq(research_copilot['disable-model-invocation'], true)
+  eq(research_copilot['allowed-tools'][1], 'web_search')
+  eq(admin_copilot, nil)
 end
 
 return T

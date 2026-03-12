@@ -4,13 +4,28 @@ local util = require('cmp_coding_agent.util')
 
 local M = {}
 
+local function agent_enabled(mode, agent)
+  mode = mode or 'both'
+
+  if mode == 'all' then
+    return true
+  end
+
+  if mode == 'both' then
+    return agent == 'claude' or agent == 'codex'
+  end
+
+  return mode == agent
+end
+
 local function add_root(result, seen, path, agent, trigger_family, root_scope)
   path = util.normalize(path)
-  if not path or not util.is_dir(path) or seen[path] then
+  local key = string.format('%s|%s|%s', agent, trigger_family, path or '')
+  if not path or not util.is_dir(path) or seen[key] then
     return
   end
 
-  seen[path] = true
+  seen[key] = true
   table.insert(result, {
     path = path,
     agent = agent,
@@ -26,6 +41,8 @@ local function collect_roots(opts)
   local project_root = util.normalize(opts.project_root)
   local buffer_dir = util.normalize(opts.buffer_dir) or project_root
   local home_dir = util.normalize(opts.home_dir)
+  local env = opts.env or {}
+  local agent_mode = opts.agent_mode or 'both'
   local repo_buffer_dir = buffer_dir
 
   if
@@ -37,27 +54,56 @@ local function collect_roots(opts)
     repo_buffer_dir = project_root
   end
 
-  if project_root and include.repo_agents ~= false then
+  if project_root and include.repo_copilot == true and agent_enabled(agent_mode, 'copilot') then
     for _, ancestor in ipairs(util.ancestors(repo_buffer_dir or project_root, project_root)) do
-      add_root(roots, seen, util.join(ancestor, '.agents/skills'), 'codex', 'dollar', 'repo')
+      add_root(roots, seen, util.join(ancestor, '.github/skills'), 'copilot', 'slash', 'repo')
     end
   end
 
-  if project_root and include.repo_claude ~= false then
+  if project_root and include.repo_agents ~= false then
+    for _, ancestor in ipairs(util.ancestors(repo_buffer_dir or project_root, project_root)) do
+      if agent_enabled(agent_mode, 'codex') then
+        add_root(roots, seen, util.join(ancestor, '.agents/skills'), 'codex', 'dollar', 'repo')
+      end
+      if agent_enabled(agent_mode, 'copilot') then
+        add_root(roots, seen, util.join(ancestor, '.agents/skills'), 'copilot', 'slash', 'repo')
+      end
+    end
+  end
+
+  if project_root and include.repo_copilot == true and agent_enabled(agent_mode, 'copilot') then
+    add_root(roots, seen, util.join(project_root, '.claude/skills'), 'copilot', 'slash', 'repo')
+  end
+
+  if project_root and include.repo_claude ~= false and agent_enabled(agent_mode, 'claude') then
     add_root(roots, seen, util.join(project_root, '.claude/skills'), 'claude', 'slash', 'repo')
   end
-  if project_root and include.repo_codex ~= false then
+  if project_root and include.repo_codex ~= false and agent_enabled(agent_mode, 'codex') then
     add_root(roots, seen, util.join(project_root, '.codex/skills'), 'codex', 'dollar', 'repo')
   end
 
-  if home_dir and include.user_agents ~= false then
+  if home_dir and include.user_agents ~= false and agent_enabled(agent_mode, 'codex') then
     add_root(roots, seen, util.join(home_dir, '.agents/skills'), 'codex', 'dollar', 'user')
   end
-  if home_dir and include.user_claude ~= false then
+  if home_dir and include.user_claude ~= false and agent_enabled(agent_mode, 'claude') then
     add_root(roots, seen, util.join(home_dir, '.config/claude/skills'), 'claude', 'slash', 'user')
     add_root(roots, seen, util.join(home_dir, '.claude/skills'), 'claude', 'slash', 'user')
   end
-  if home_dir and include.user_codex ~= false then
+  if include.user_copilot == true and agent_enabled(agent_mode, 'copilot') then
+    local copilot_home = util.normalize(env.COPILOT_HOME) or (home_dir and util.join(home_dir, '.copilot')) or nil
+    local copilot_scope = env.COPILOT_HOME and 'config' or 'user'
+
+    if copilot_home then
+      add_root(roots, seen, util.join(copilot_home, 'skills'), 'copilot', 'slash', copilot_scope)
+    end
+    if home_dir then
+      add_root(roots, seen, util.join(home_dir, '.claude/skills'), 'copilot', 'slash', 'user')
+    end
+    for _, path in ipairs(util.split_csv_paths(env.COPILOT_SKILLS_DIRS)) do
+      add_root(roots, seen, path, 'copilot', 'slash', 'config')
+    end
+  end
+  if home_dir and include.user_codex ~= false and agent_enabled(agent_mode, 'codex') then
     add_root(roots, seen, util.join(home_dir, '.codex/skills'), 'codex', 'dollar', 'user')
   end
 
@@ -80,7 +126,7 @@ local function build_record(root, skill_dir, opts)
   end
 
   local parsed = frontmatter.parse_file(skill_file)
-  if root.agent == 'claude' and parsed.meta['user-invocable'] == false and not opts.include_non_user_invocable then
+  if root.trigger_family == 'slash' and parsed.meta['user-invocable'] == false and not opts.include_non_user_invocable then
     return nil
   end
 

@@ -3,13 +3,28 @@ local util = require('cmp_coding_agent.util')
 
 local M = {}
 
+local function agent_enabled(mode, agent)
+  mode = mode or 'both'
+
+  if mode == 'all' then
+    return true
+  end
+
+  if mode == 'both' then
+    return agent == 'claude' or agent == 'codex'
+  end
+
+  return mode == agent
+end
+
 local function add_root(result, seen, path, kind, agent, root_scope)
   path = util.normalize(path)
-  if not path or not util.is_dir(path) or seen[path] then
+  local key = string.format('%s|%s|%s', kind, agent, path or '')
+  if not path or not util.is_dir(path) or seen[key] then
     return
   end
 
-  seen[path] = true
+  seen[key] = true
   table.insert(result, {
     path = path,
     kind = kind,
@@ -18,21 +33,32 @@ local function add_root(result, seen, path, kind, agent, root_scope)
   })
 end
 
-local function collect_claude_roots(opts)
+local function collect_command_roots(opts)
   local roots = {}
   local seen = {}
   local env = opts.env or {}
+  local agent_mode = opts.agent_mode or 'both'
   local project_root = util.normalize(opts.project_root)
   local home_dir = util.normalize(opts.home_dir)
 
-  if env.CLAUDE_CONFIG_DIR then
+  if env.CLAUDE_CONFIG_DIR and agent_enabled(agent_mode, 'claude') then
     add_root(roots, seen, util.join(env.CLAUDE_CONFIG_DIR, 'commands'), 'command', 'claude', 'config')
   end
   if home_dir then
-    add_root(roots, seen, util.join(home_dir, '.claude/commands'), 'command', 'claude', 'user')
+    if agent_enabled(agent_mode, 'claude') then
+      add_root(roots, seen, util.join(home_dir, '.claude/commands'), 'command', 'claude', 'user')
+    end
+    if agent_enabled(agent_mode, 'copilot') then
+      add_root(roots, seen, util.join(home_dir, '.claude/commands'), 'command', 'copilot', 'user')
+    end
   end
   if project_root then
-    add_root(roots, seen, util.join(project_root, '.claude/commands'), 'command', 'claude', 'repo')
+    if agent_enabled(agent_mode, 'claude') then
+      add_root(roots, seen, util.join(project_root, '.claude/commands'), 'command', 'claude', 'repo')
+    end
+    if agent_enabled(agent_mode, 'copilot') then
+      add_root(roots, seen, util.join(project_root, '.claude/commands'), 'command', 'copilot', 'repo')
+    end
   end
 
   return roots
@@ -43,6 +69,10 @@ local function collect_codex_roots(opts)
   local seen = {}
   local env = opts.env or {}
   local home_dir = util.normalize(opts.home_dir)
+
+  if not agent_enabled(opts.agent_mode or 'both', 'codex') then
+    return roots
+  end
 
   if env.CODEX_HOME then
     add_root(roots, seen, util.join(env.CODEX_HOME, 'prompts'), 'prompt', 'codex', 'config')
@@ -63,9 +93,11 @@ local function build_command_record(root, path)
     name = stem,
     description = parsed.meta.description or parsed.excerpt or '',
     ['argument-hint'] = parsed.meta['argument-hint'],
+    ['allowed-tools'] = parsed.meta['allowed-tools'],
+    ['disable-model-invocation'] = parsed.meta['disable-model-invocation'],
     excerpt = parsed.excerpt,
     path = path,
-    agent = 'claude',
+    agent = root.agent,
     source_kind = 'command',
     trigger_family = 'slash',
     root_scope = root.root_scope,
@@ -100,7 +132,7 @@ function M.collect(opts)
   local result = {}
   local seen = {}
 
-  for _, root in ipairs(collect_claude_roots(opts)) do
+  for _, root in ipairs(collect_command_roots(opts)) do
     for _, path in ipairs(util.walk_files(root.path, { recursive = true, extension = '.md' })) do
       local record = build_command_record(root, path)
       local dedupe_key = string.format('%s|%s', record.agent, record.label:lower())

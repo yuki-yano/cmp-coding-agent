@@ -2,7 +2,7 @@
 
 `nvim-cmp` source collection for coding-agent prompt authoring.
 
-It targets both Claude Code and Codex, and provides three sources:
+It targets Claude Code, Codex, and Copilot CLI, and provides three sources:
 
 - `coding_agent_slash`
 - `coding_agent_dollar`
@@ -10,13 +10,15 @@ It targets both Claude Code and Codex, and provides three sources:
 
 ## Features
 
-- Claude Code and Codex built-in slash command completion
+- Claude Code, Codex, and Copilot CLI built-in slash command completion
 - Skill discovery from repo and user scopes
+  - `.github/skills`
   - `.agents/skills`
   - `.claude/skills`
   - `.codex/skills`
+  - `~/.copilot/skills`
   - `~/.config/claude/skills`
-- Claude custom command completion from `.claude/commands`
+- Claude and Copilot custom command completion from `.claude/commands`
 - Codex prompt completion from `~/.codex/prompts` or `$CODEX_HOME/prompts`
 - `@` file path completion with configurable `@` preservation
 - Root-aware discovery for Git repos and non-Git directories
@@ -53,9 +55,11 @@ require('cmp_coding_agent').setup({
       repo_agents = true,
       repo_claude = true,
       repo_codex = true,
+      repo_copilot = true,
       user_agents = true,
       user_claude = true,
       user_codex = true,
+      user_copilot = true,
     },
     include_non_user_invocable = false,
   },
@@ -63,14 +67,17 @@ require('cmp_coding_agent').setup({
     include_builtins = {
       claude = true,
       codex = true,
+      copilot = true,
     },
     extra = {
       claude = {},
       codex = {},
+      copilot = {},
     },
     disabled = {
       claude = {},
       codex = {},
+      copilot = {},
     },
   },
   prompts = {
@@ -101,8 +108,10 @@ cmp.setup({
 
 - Claude built-ins
 - Codex built-ins
+- Copilot built-ins
+- Copilot skills from `.github/skills`, `.agents/skills`, and `.claude/skills`
 - Claude skills from `.claude/skills`
-- Claude commands from `.claude/commands`
+- Claude and Copilot commands from `.claude/commands`
 - Codex prompts as `/prompts:name`
 
 ### `coding_agent_dollar`
@@ -119,6 +128,10 @@ cmp.setup({
 
 ### Skills
 
+- Repo-local Copilot roots
+  - each ancestor `.github/skills` from current buffer directory to project root
+  - each ancestor `.agents/skills` from current buffer directory to project root
+  - project root `.claude/skills`
 - Repo-local Codex roots
   - each ancestor `.agents/skills` from current buffer directory to project root
   - project root `.codex/skills`
@@ -126,14 +139,20 @@ cmp.setup({
   - project root `.claude/skills`
 - User roots
   - `~/.agents/skills`
+  - `$COPILOT_HOME/skills`
+  - otherwise `~/.copilot/skills`
   - `~/.config/claude/skills`
   - `~/.claude/skills`
   - `~/.codex/skills`
+  - `COPILOT_SKILLS_DIRS` entries
 
 ### Commands and prompts
 
 - Claude commands
   - `$CLAUDE_CONFIG_DIR/commands`
+  - `~/.claude/commands`
+  - project `.claude/commands`
+- Copilot commands
   - `~/.claude/commands`
   - project `.claude/commands`
 - Codex prompts
@@ -142,7 +161,7 @@ cmp.setup({
 
 ## Configuration Notes
 
-- `agent` accepts `'claude'`, `'codex'`, `'both'`, or a function.
+- `agent` accepts `'claude'`, `'codex'`, `'copilot'`, `'both'`, `'all'`, or a function.
 - Buffer-local override is available via `vim.b.cmp_coding_agent_agent`.
 - `commands.extra.<agent>` accepts either command strings or `{ name = ..., description = ... }`.
 - `commands.disabled.<agent>` removes built-ins by name.

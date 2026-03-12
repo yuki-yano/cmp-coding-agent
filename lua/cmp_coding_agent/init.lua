@@ -1,5 +1,6 @@
 local config = require('cmp_coding_agent.config')
 
+---@class cmp_coding_agent.Module
 local M = {}
 
 local registered = false
@@ -21,11 +22,13 @@ function M.ensure_registered()
   return true
 end
 
+---@param user_config? cmp_coding_agent.Config
 function M.setup(user_config)
   config.setup(user_config)
   M.ensure_registered()
 end
 
+---@return cmp_coding_agent.Config
 function M.get_config()
   return config.get()
 end

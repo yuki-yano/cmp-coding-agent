@@ -17,7 +17,7 @@ local function detail_for(record)
     return string.format('(%s skill)', record.agent)
   end
   if record.source_kind == 'command' then
-    return '(claude command)'
+    return string.format('(%s command)', record.agent)
   end
   if record.source_kind == 'prompt' then
     return '(codex prompt)'
@@ -53,6 +53,12 @@ local function documentation_for(record)
   end
   if record.alias_of then
     table.insert(sections, string.format('Alias of `/%s`', record.alias_of))
+  end
+  if type(record['allowed-tools']) == 'table' and #record['allowed-tools'] > 0 then
+    table.insert(sections, 'Allowed tools: `' .. table.concat(record['allowed-tools'], '`, `') .. '`')
+  end
+  if record['disable-model-invocation'] ~= nil then
+    table.insert(sections, string.format('Disable model invocation: `%s`', tostring(record['disable-model-invocation'])))
   end
   if record.path and record.path ~= '' then
     table.insert(sections, '`' .. record.path .. '`')

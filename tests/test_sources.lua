@@ -297,4 +297,108 @@ T['source modules']['uses cwd project roots for temp editprompt buffers'] = func
   eq(file.insertText, 'src/app.lua')
 end
 
+T['source modules']['slash source returns copilot built-ins, skills, and commands'] = function()
+  local project = helpers.new_temp_dir('copilot-slash-project')
+  local home = helpers.new_temp_dir('copilot-slash-home')
+  local extra = helpers.new_temp_dir('copilot-slash-extra')
+  table.insert(temp_dirs, project)
+  table.insert(temp_dirs, home)
+  table.insert(temp_dirs, extra)
+
+  helpers.write_file(
+    helpers.join(project, '.github/skills/workspace-notes/SKILL.md'),
+    table.concat({
+      '---',
+      'description: Summarize workspace notes',
+      '---',
+      '',
+      'Summarize local context for Copilot.',
+    }, '\n')
+  )
+  helpers.write_file(
+    helpers.join(project, '.claude/commands/fix/tests.md'),
+    table.concat({
+      '---',
+      'description: Fix broken tests',
+      'allowed-tools:',
+      '  - edit',
+      '---',
+      '',
+      'Repair the failing test suite.',
+    }, '\n')
+  )
+  helpers.write_file(
+    helpers.join(extra, 'external-skill/SKILL.md'),
+    table.concat({
+      '---',
+      'description: External Copilot skill',
+      '---',
+      '',
+      'Loaded from COPILOT_SKILLS_DIRS.',
+    }, '\n')
+  )
+
+  child.lua(
+    [[
+    local project, home, extra = ...
+    vim.env.HOME = home
+    vim.env.COPILOT_HOME = home .. '/.copilot'
+    vim.env.COPILOT_SKILLS_DIRS = extra
+    vim.cmd('cd ' .. vim.fn.fnameescape(project))
+    vim.cmd('edit ' .. vim.fn.fnameescape(project .. '/README.md'))
+    require('cmp_coding_agent').setup({
+      agent = 'copilot',
+      commands = {
+        include_builtins = { claude = true, codex = true, copilot = true },
+        extra = { claude = {}, codex = {}, copilot = {} },
+        disabled = { claude = {}, codex = {}, copilot = {} },
+      },
+      skills = {
+        include = {
+          repo_agents = true,
+          repo_claude = false,
+          repo_codex = true,
+          repo_copilot = true,
+          user_agents = true,
+          user_claude = false,
+          user_codex = true,
+          user_copilot = true,
+        },
+        include_non_user_invocable = false,
+      },
+    })
+
+    require('cmp_coding_agent.source.slash').new():complete({
+      context = {
+        bufnr = 0,
+        cursor_before_line = '/',
+      },
+    }, function(response)
+      _G.cmp_coding_agent_test_copilot_items = response.items
+    end)
+  ]],
+    { project, home, extra }
+  )
+
+  local items = child.lua_get('_G.cmp_coding_agent_test_copilot_items')
+
+  local labels = {}
+  for _, item in ipairs(items) do
+    labels[item.label] = true
+  end
+
+  eq(labels.research, true)
+  eq(labels['workspace-notes'], true)
+  eq(labels['fix:tests'], true)
+
+  local research = helpers.find_item(items, 'research')
+  eq(research.menu, '[Copilot]')
+
+  local skill = helpers.find_item(items, 'workspace-notes')
+  eq(skill.menu, '[Copilot]')
+
+  local command = helpers.find_item(items, 'fix:tests')
+  eq(command.menu, '[Copilot]')
+end
+
 return T

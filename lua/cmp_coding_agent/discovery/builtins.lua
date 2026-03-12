@@ -134,6 +134,54 @@ local CODEX_BUILTINS = {
   { name = 'settings', description = 'Configure realtime microphone or speaker' },
 }
 
+local COPILOT_BUILTINS = {
+  { name = 'init', description = 'Initialize Copilot instructions for this repository, or suppress the init suggestion' },
+  { name = 'agent', description = 'Browse and select from available agents (if any)' },
+  { name = 'skills', description = 'Manage skills for enhanced capabilities' },
+  { name = 'mcp', description = 'Manage MCP server configuration' },
+  { name = 'plugin', description = 'Manage plugins and plugin marketplaces' },
+  { name = 'model', description = 'Select AI model to use' },
+  { name = 'fleet', description = 'Enable fleet mode for parallel subagent execution' },
+  { name = 'tasks', description = 'View and manage background tasks (subagents and shell sessions)' },
+  { name = 'ide', description = 'Connect to an IDE workspace' },
+  { name = 'diff', description = 'Review the changes made in the current directory' },
+  { name = 'review', description = 'Run code review agent to analyze changes' },
+  { name = 'lsp', description = 'Manage language server configuration' },
+  { name = 'terminal-setup', description = 'Configure terminal for multiline input support (shift+enter)' },
+  { name = 'allow-all', description = 'Enable all permissions (tools, paths, and URLs)' },
+  { name = 'add-dir', description = 'Add a directory to the allowed list for file access' },
+  { name = 'list-dirs', description = 'Display all allowed directories for file access' },
+  { name = 'cwd', description = 'Change working directory or show current directory' },
+  { name = 'reset-allowed-tools', description = 'Reset the list of allowed tools' },
+  { name = 'resume', description = 'Switch to a different session', argument_hint = '[session-id]' },
+  { name = 'rename', description = 'Rename the current session' },
+  { name = 'context', description = 'Show context window token usage and visualization' },
+  { name = 'usage', description = 'Display session usage metrics and statistics' },
+  { name = 'session', description = 'Show session info and workspace summary' },
+  { name = 'compact', description = 'Summarize conversation history to reduce context window usage' },
+  { name = 'share', description = 'Share session or research report to markdown file or GitHub gist' },
+  { name = 'copy', description = 'Copy the last response to the clipboard' },
+  { name = 'help', description = 'Show help for interactive commands' },
+  { name = 'changelog', description = 'Display changelog for CLI versions' },
+  { name = 'feedback', description = 'Provide feedback about the CLI' },
+  { name = 'theme', description = 'View or set color mode' },
+  { name = 'update', description = 'Update the CLI to the latest version' },
+  { name = 'experimental', description = 'Show available experimental features, or enable/disable experimental mode' },
+  { name = 'clear', description = 'Clear the conversation history' },
+  { name = 'instructions', description = 'View and toggle custom instruction files' },
+  {
+    name = 'streamer-mode',
+    description = 'Toggle streamer mode (hides preview model names and quota details for streaming)',
+  },
+  { name = 'exit', description = 'Exit the CLI', aliases = { 'quit' } },
+  { name = 'login', description = 'Log in to Copilot' },
+  { name = 'logout', description = 'Log out of Copilot' },
+  { name = 'plan', description = 'Create an implementation plan before coding' },
+  { name = 'research', description = 'Run deep research investigation using GitHub search and web sources' },
+  { name = 'restart', description = 'Restart the CLI, preserving the current session' },
+  { name = 'user', description = 'Manage GitHub user list' },
+}
+
 local function disabled_set(names)
   local result = {}
   for _, name in ipairs(names or {}) do
@@ -183,7 +231,12 @@ end
 function M.collect(opts)
   opts = opts or {}
   local agent = opts.agent or 'claude'
-  local base = agent == 'claude' and CLAUDE_BUILTINS or CODEX_BUILTINS
+  local base = CLAUDE_BUILTINS
+  if agent == 'codex' then
+    base = CODEX_BUILTINS
+  elseif agent == 'copilot' then
+    base = COPILOT_BUILTINS
+  end
   local user_config = opts.commands_config or {}
   local records = {}
   local disabled = disabled_set(user_config.disabled and user_config.disabled[agent] or {})

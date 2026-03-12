@@ -1,4 +1,5 @@
-*cmp-coding-agent.txt*       `nvim-cmp` sources for Claude Code and Codex
+*cmp-coding-agent.txt*       `nvim-cmp` sources for Claude Code, Codex, and
+Copilot CLI
 
 ==============================================================================
 CONTENTS                                                  *cmp-coding-agent*
@@ -21,9 +22,11 @@ cmp-coding-agent provides three `nvim-cmp` sources for prompt authoring:
 Supported discovery targets:
 
 - Claude Code built-ins and `.claude/skills`
+- Copilot CLI built-ins, `.github/skills`, `.agents/skills`, and `.claude/skills`
 - `~/.config/claude/skills`
+- `$COPILOT_HOME/skills` or `~/.copilot/skills`
 - Codex built-ins, `.agents/skills`, and `.codex/skills`
-- Claude commands from `.claude/commands`
+- Claude and Copilot commands from `.claude/commands`
 - Codex prompts from `$CODEX_HOME/prompts` or `~/.codex/prompts`
 - `@` file path completion
 
@@ -66,9 +69,11 @@ Default configuration:
         repo_agents = true,
         repo_claude = true,
         repo_codex = true,
+        repo_copilot = true,
         user_agents = true,
         user_claude = true,
         user_codex = true,
+        user_copilot = true,
       },
       include_non_user_invocable = false,
     },
@@ -76,14 +81,17 @@ Default configuration:
       include_builtins = {
         claude = true,
         codex = true,
+        copilot = true,
       },
       extra = {
         claude = {},
         codex = {},
+        copilot = {},
       },
       disabled = {
         claude = {},
         codex = {},
+        copilot = {},
       },
     },
     prompts = {
@@ -98,7 +106,9 @@ Default configuration:
 
 - `'claude'`
 - `'codex'`
+- `'copilot'`
 - `'both'`
+- `'all'`
 - `function(ctx) -> agent`
 
 Buffer-local override:
@@ -114,8 +124,10 @@ SOURCES                                         *cmp-coding-agent-sources*
 
 - Claude built-ins
 - Codex built-ins
+- Copilot built-ins
+- Copilot skills
 - Claude skills
-- Claude commands
+- Claude and Copilot commands
 - Codex prompts
 
 `coding_agent_dollar`

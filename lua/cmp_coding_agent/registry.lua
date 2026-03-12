@@ -53,6 +53,8 @@ local function collect_skill_records(ctx, current_config, trigger_family)
       project_root = ctx.project_root,
       buffer_dir = ctx.buffer_dir,
       home_dir = ctx.home_dir,
+      env = ctx.env,
+      agent_mode = ctx.agent,
       include = current_config.skills.include,
       include_non_user_invocable = current_config.skills.include_non_user_invocable,
     }))
@@ -69,6 +71,7 @@ local function collect_command_records(ctx)
     project_root = ctx.project_root,
     home_dir = ctx.home_dir,
     env = ctx.env,
+    agent_mode = ctx.agent,
   })
 end
 
@@ -86,6 +89,9 @@ local function agent_label(agent)
   end
   if agent == 'codex' then
     return 'Codex'
+  end
+  if agent == 'copilot' then
+    return 'Copilot'
   end
   return agent
 end
@@ -152,20 +158,23 @@ local function merge_records(records)
       table.insert(merged, record)
     else
       local record = vim.deepcopy(group[1])
-      local has_claude = false
-      local has_codex = false
+      local agents = {}
 
       for _, entry in ipairs(group) do
-        has_claude = has_claude or entry.agent == 'claude'
-        has_codex = has_codex or entry.agent == 'codex'
+        agents[entry.agent] = true
       end
 
-      if has_claude and has_codex then
+      local agent_count = 0
+      local single_agent
+      for agent, _ in pairs(agents) do
+        agent_count = agent_count + 1
+        single_agent = agent
+      end
+
+      if agent_count > 1 then
         record.menu = 'Agent'
-      elseif has_claude then
-        record.menu = 'Claude'
-      elseif has_codex then
-        record.menu = 'Codex'
+      elseif single_agent then
+        record.menu = agent_label(single_agent)
       end
 
       record.documentation = merged_documentation(group) or record.documentation
@@ -231,8 +240,19 @@ function M.collect_slash_items(opts)
     )
   end
 
-  if context.agent_enabled(ctx.agent, 'claude') then
-    for _, record in ipairs(collect_skill_records(ctx, current, 'slash')) do
+  if context.agent_enabled(ctx.agent, 'copilot') and current.commands.include_builtins.copilot then
+    vim.list_extend(
+      records,
+      builtins.collect({
+        agent = 'copilot',
+        query = query,
+        commands_config = current.commands,
+      })
+    )
+  end
+
+  for _, record in ipairs(collect_skill_records(ctx, current, 'slash')) do
+    if context.agent_enabled(ctx.agent, record.agent) then
       record.sort_group = 20
       if matches_query(record, query) then
         table.insert(records, record)
@@ -242,6 +262,11 @@ function M.collect_slash_items(opts)
 
   for _, record in ipairs(collect_command_records(ctx)) do
     if record.agent == 'claude' and context.agent_enabled(ctx.agent, 'claude') then
+      record.sort_group = 30
+      if matches_query(record, query) then
+        table.insert(records, record)
+      end
+    elseif record.agent == 'copilot' and context.agent_enabled(ctx.agent, 'copilot') then
       record.sort_group = 30
       if matches_query(record, query) then
         table.insert(records, record)
@@ -275,8 +300,8 @@ function M.collect_dollar_items(opts)
   local query = (opts.token or ''):sub(2)
   local records = {}
 
-  if context.agent_enabled(ctx.agent, 'codex') then
-    for _, record in ipairs(collect_skill_records(ctx, current, 'dollar')) do
+  for _, record in ipairs(collect_skill_records(ctx, current, 'dollar')) do
+    if context.agent_enabled(ctx.agent, record.agent) then
       record.sort_group = 20
       if matches_query(record, query) then
         table.insert(records, record)
